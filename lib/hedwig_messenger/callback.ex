@@ -5,51 +5,43 @@ defmodule Hedwig.Adapter.Messenger.Callback do
   plug Plug.Logger
 
   def start_link() do
-    config = Application.get_env(:hedwig_messenger, __MODULE__, [])
+    start_link([port: 4000])
+  end
 
-    port = Keyword.get(config, :port, 4000)
-    cowboy_options = [port: port]
-
-    base_path = Keyword.get(config, :base_path, "/messenger")
-    base_path = Path.join(["/", base_path])
-    plug_options = [base_path: base_path]
-
-    Plug.Adapters.Cowboy.https __MODULE__, plug_options, cowboy_options
+  def start_link(cowboy_options) do
+    Plug.Adapters.Cowboy.http __MODULE__, [], cowboy_options
   end
 
   def init(options) do
     options
   end
 
-  def call(%Plug.Conn{request_path: request_path, method: "POST"} = conn, opts) do
-    base_path = opts.base_path
-    if String.starts_with?(request_path, base_path) do
-      robot_name = List.last(Path.split(request_path))
-      {:ok, body, conn} = Plug.Conn.read_body(conn)
+  def call(%Plug.Conn{ request_path: "/messenger/" <> robot_name, method: "POST" } = conn, _) do
+    {:ok, body, conn} = Plug.Conn.read_body(conn)
 
-      case Hedwig.Adapters.Messenger.handle_in(robot_name, body) do
-        {:error, _} ->
-          conn
-          |> send_resp(404, "Not found")
-          |> halt
-        :ok ->
-          conn
-          |> send_resp(200, "ok")
-          |> halt
-      end
-
-    else
-      conn
-      |> send_resp(404, "Not found")
-      |> halt
+    case Hedwig.Adapters.Messenger.handle_in(robot_name, body) do
+      {:error, _} ->
+        conn
+        |> send_resp(404, "Not found")
+        |> halt
+      :ok ->
+        conn
+        |> send_resp(200, "ok")
+        |> halt
     end
   end
 
-  def call(conn, _opts) do
-    IO.inspect conn
+  def call(%Plug.Conn{query_string: query_string, method: "GET"} = conn, _opts) do
+    token = query_string |> URI.decode_query |> Map.get("hub.challenge", nil)
 
     conn
+    |> send_resp(200, token)
+    |> halt()
+  end
+
+  def call(conn, _opts) do
+    conn
     |> send_resp(404, "Not found")
-    |> halt
+    |> halt()
   end
 end

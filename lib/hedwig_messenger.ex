@@ -4,14 +4,12 @@ defmodule Hedwig.Adapters.Messenger do
 
   def init({robot, opts}) do
     HTTPoison.start
-    :global.register_name({__MODULE__}, opts[:name], self())
-    Hedwig.Robot.handle_connect(robot)
-
+    :global.register_name({ __MODULE__, opts[:name]}, self())
     state = %{
       robot: robot
     }
 
-    {:ok, robot}
+    {:ok, state}
   end
 
   def handle_cast({_, msg}, state) do
@@ -23,8 +21,22 @@ defmodule Hedwig.Adapters.Messenger do
     {:reply, robot, state}
   end
 
+  def handle_in(robot_name, req_body) do
+    case :global.whereis_name({__MODULE__, robot_name}) do
+      :undefined ->
+        Logger.error("#{{__MODULE__, robot_name}} not found")
+        { :error, :not_found }
+
+      adapter ->
+        robot = GenServer.call(adapter, :robot)
+        msg = build_message(req_body)
+        Hedwig.Robot.handle_in(robot, msg)
+    end
+  end
+
   def send_text_message(user_id, msg, state) do
-    endpoint = "https://graph.facebook.com/v2.6/me/messages?access_token=#{Application.get_env("PAGE_ACCESS_TOKEN")}"
+    config = Application.get_env(:hedwig_messenger, __MODULE__, [])
+    endpoint = "https://graph.facebook.com/v2.6/me/messages?access_token=#{Keyword.get(config, :token)}"
     body = build_body(:text, msg, state.user_id)
     Logger.info "sending #{body} to #{user_id}"
 
@@ -53,6 +65,16 @@ defmodule Hedwig.Adapters.Messenger do
       message: %{
         text: text
       }
+    }
+  end
+
+  defp build_message(req_body) do
+    {:ok, req_body} = req_body |> Poison.decode
+    %Hedwig.Message{
+      ref: make_ref(),
+      text: Map.get(req_body, "messaging") |> List.first |> Map.get("text"),
+      type: "chat",
+      user: 1 # TODO: Fix this to use real user ids
     }
   end
 end
