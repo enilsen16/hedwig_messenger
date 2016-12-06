@@ -53,7 +53,7 @@ defmodule Hedwig.Adapters.Messenger do
     end
   end
 
-  defp send_request(url, user_id, body, state) do
+  defp send_request(url, _user_id, body, _state) do
     {:ok, body} = body |> Poison.encode
     headers = [{"Content-Type", "application/json"}]
     HTTPoison.post(url, body, headers)
