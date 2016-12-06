@@ -4,7 +4,7 @@ defmodule HedwigMessenger.Mixfile do
   def project do
     [app: :hedwig_messenger,
      version: "0.1.0",
-     elixir: "~> 1.3",
+     elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      description: "A facebook messenger adapter for hedwig",
@@ -24,7 +24,8 @@ defmodule HedwigMessenger.Mixfile do
       maintainers: ["Erik Nilsen"],
       links: %{
         "GitHub" => "https://github.com/enilsen16/hedwig_messenger"
-      }
+      },
+      licenses: ["MIT"]
     ]
   end
 
@@ -40,7 +41,7 @@ defmodule HedwigMessenger.Mixfile do
   defp deps do
     [
       {:cowboy, "~> 1.0", optional: true},
-      {:hedwig, github: "hedwig-im/hedwig"},
+      {:hedwig, "~> 1.0"},
       {:httpoison, "~> 0.10"},
       {:plug, "~> 1.2", optional: true},
       {:poison, "~> 3.0"}
