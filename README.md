@@ -89,3 +89,7 @@ If you are defining your own callback (for instance in a phoenix app), just make
 | Payment    |    |
 | Checkout Update    |    |
 | Account Linking    |    |   |
+
+## Thanks
+
+Initially based on @bryanjos's hedwig_sms design.
