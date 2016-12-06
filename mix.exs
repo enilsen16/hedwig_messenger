@@ -29,7 +29,7 @@ defmodule HedwigMessenger.Mixfile do
   defp deps do
     [
       {:cowboy, "~> 1.0", optional: true},
-      {:hedwig, path: "/Users/erik/Projects/hedwig"},
+      {:hedwig, github: "hedwig-im/hedwig"},
       {:httpoison, "~> 0.10"},
       {:plug, "~> 1.2", optional: true},
       {:poison, "~> 3.0"}
