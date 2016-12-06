@@ -6,14 +6,15 @@ defmodule Hedwig.Adapters.Messenger do
     HTTPoison.start
     :global.register_name({ __MODULE__, opts[:name]}, self())
     state = %{
-      robot: robot
+      robot: robot,
+      token: Keyword.get(opts, :token)
     }
 
     {:ok, state}
   end
 
   def handle_cast({_, msg}, state) do
-    send_text_message(state.user_id, msg, state)
+    send_text_message(msg, state)
     {:noreply, state}
   end
 
@@ -29,18 +30,18 @@ defmodule Hedwig.Adapters.Messenger do
 
       adapter ->
         robot = GenServer.call(adapter, :robot)
-        msg = build_message(req_body)
+        msg = send_messages(req_body) |> Map.put(:robot, robot)
+
         Hedwig.Robot.handle_in(robot, msg)
     end
   end
 
-  def send_text_message(user_id, msg, state) do
-    config = Application.get_env(:hedwig_messenger, __MODULE__, [])
-    endpoint = "https://graph.facebook.com/v2.6/me/messages?access_token=#{Keyword.get(config, :token)}"
-    body = build_body(:text, msg, state.user_id)
-    Logger.info "sending #{body} to #{user_id}"
+  def send_text_message(msg, state) do
+    endpoint = "https://graph.facebook.com/v2.6/me/messages?access_token=#{Map.get(state, :token)}"
+    body = build_body(:text, msg)
+    Logger.info "sending #{body.message.text} to #{msg.user}"
 
-    case send_request(endpoint, user_id, body, state) do
+    case send_request(endpoint, msg.user, body, state) do
       {:ok, %HTTPoison.Response{status_code: status_code} = response } when status_code in 200..299 ->
         Logger.info("#{inspect response}")
 
@@ -53,28 +54,43 @@ defmodule Hedwig.Adapters.Messenger do
   end
 
   defp send_request(url, user_id, body, state) do
-    headers = [{"Content-Type", "application/json" }]
+    {:ok, body} = body |> Poison.encode
+    headers = [{"Content-Type", "application/json"}]
     HTTPoison.post(url, body, headers)
   end
 
-  defp build_body(:text, text, user_id) do
+  defp build_body(:text, msg) do
     %{
       recipient: %{
-        id: user_id
+        id: Map.get(msg, :user)
       },
       message: %{
-        text: text
+        text: Map.get(msg, :text)
       }
     }
   end
 
-  defp build_message(req_body) do
+  defp send_messages(req_body) do
     {:ok, req_body} = req_body |> Poison.decode
-    %Hedwig.Message{
-      ref: make_ref(),
-      text: Map.get(req_body, "messaging") |> List.first |> Map.get("text"),
-      type: "chat",
-      user: 1 # TODO: Fix this to use real user ids
-    }
+
+    Map.get(req_body, "entry")
+    |> List.first()
+    |> build_message()
+  end
+
+  defp build_message(entry) do
+      {text, user_id} = parse_req_body(entry)
+
+      %Hedwig.Message{
+        ref: make_ref(),
+        text: text,
+        type: "chat",
+        user: user_id
+      }
+  end
+
+  defp parse_req_body(entry) do
+    body = Map.get(entry, "messaging") |> List.first()
+    {get_in(body, ["message", "text"]), get_in(body, ["sender", "id"])}
   end
 end
