@@ -7,6 +7,8 @@ defmodule HedwigMessenger.Mixfile do
      elixir: "~> 1.3",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
+     description: "A facebook messenger adapter for hedwig",
+     package: package(),
      deps: deps()]
   end
 
@@ -15,6 +17,15 @@ defmodule HedwigMessenger.Mixfile do
   # Type "mix help compile.app" for more information
   def application do
     [applications: [:logger]]
+  end
+
+  defp package do
+    [
+      maintainers: ["Erik Nilsen"],
+      links: %{
+        "GitHub" => "https://github.com/enilsen16/hedwig_messenger"
+      }
+    ]
   end
 
   # Dependencies can be Hex packages:
