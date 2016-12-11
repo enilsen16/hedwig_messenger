@@ -53,7 +53,7 @@ The parameters are:
 If you are defining your own callback (for instance in a phoenix app), just make sure to call `Hedwig.Adapters.Messenger.handle_in/2`
 
 ```elixir
-    def my_twilio_callback(conn, params) do
+    def my_messenger_callback(conn, params) do
         case Hedwig.Adapters.Messenger.handle_in(robot_name, params) do
             {:error, reason} ->
                 # Handle robot not found
